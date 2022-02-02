@@ -1,4 +1,4 @@
- (ns commnet.system
+ (ns comment.system
   (:require [integrant.core :as ig]
             [comment.handler :as handler]
             [ring.adapter.jetty :as jetty]))
