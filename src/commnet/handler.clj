@@ -6,6 +6,7 @@
    [reitit.swagger-ui :as swagger-ui]
    [reitit.ring.middleware.muuntaja :as muuntaja]
    [reitit.coercion.spec]
+   [reitit.dev.pretty :as pretty]
    [reitit.ring.coercion :as coercion]
    [reitit.ring.middleware.exception :as exception]
    [muuntaja.core :as m]
@@ -53,40 +54,18 @@
                :parameters {:path {:id int?}}
                :handler ok}}]]])
 
-(def router
-  (ring/router routes
-               {:data {:coercion reitit.coercion.spec/coercion
-                       :muuntaja m/instance
-                       :middleware [swagger/swagger-feature
-                                    muuntaja/format-middleware
-                                    exception/exception-middleware ;! coercion より先に
-                                    coercion/coerce-request-middleware
-                                    coercion/coerce-response-middleware]}}))
+ (defn create-app  [db]
+  (ring/ring-handler
+   (ring/router routes
+                {:exception pretty/exception
+                 :data {:coercion reitit.coercion.spec/coercion
+                        :muuntaja m/instance
+                        :middleware [swagger/swagger-feature
+                                     muuntaja/format-middleware
+                                     exception/exception-middleware ;! coercion より先に
+                                     coercion/coerce-request-middleware
+                                     coercion/coerce-response-middleware]}})
+   (ring/routes
+    (swagger-ui/create-swagger-ui-handler
+     {:path "/"}))))
 
-(def app
-  (ring/ring-handler router
-                     (ring/routes
-                      (swagger-ui/create-swagger-ui-handler
-                       {:path "/"}))))
-
-(defonce server (atom nil))
-(defn start []
-  (when-not @server
-    (reset! server (jetty/run-jetty #'app {:port 3001 :join? false}))))
-
-(defn stop []
-  (when @server
-    (.stop @server)
-    (reset! server nil)))
-
-(defn restart []
-  (stop)
-  (start))
-
-(comment
-  (app {:request-method :get :uri "/ping"})
-  (restart)
-
-  (start)
-  (stop)
-  )
